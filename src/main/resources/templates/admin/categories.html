@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta th:name="_csrf" th:content="${_csrf.token}"/>
+  <meta th:name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>Categories Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/">Portfolio Shop</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="/admin">Admin Panel</a>
+    </div>
+    <div class="navbar-nav ms-auto">
+      <form th:action="@{/logout}" method="post" class="d-inline">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn btn-link nav-link">Logout</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4">Categories Management</h2>
+
+      <!-- Alert Messages -->
+      <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+
+      <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+
+      <!-- Add Category Button -->
+      <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-plus-circle me-2"></i>Add New Category
+      </button>
+
+      <!-- Categories Table -->
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+              <tr>
+                <th>ID</th>
+                <th>Category Name</th>
+                <th>Products Count</th>
+                <th>Actions</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:each="item : ${categories}">
+                <td th:text="${item.category.id}"></td>
+                <td>
+                  <strong th:text="${item.category.name}"></strong>
+                </td>
+                <td>
+                  <span class="badge bg-info" th:text="${item.productCount + ' products'}"></span>
+                </td>
+                <td>
+                  <button type="button"
+                          class="btn btn-sm btn-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#editCategoryModal"
+                          th:data-id="${item.category.id}"
+                          th:data-name="${item.category.name}">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </button>
+
+                  <form th:action="@{/admin/categories/delete/{id}(id=${item.category.id})}"
+                        method="post"
+                        class="d-inline"
+                        onsubmit="return confirm('Are you sure you want to delete this category?');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit"
+                            class="btn btn-sm btn-danger"
+                            th:disabled="${item.productCount > 0}">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </form>
+
+                  <span th:if="${item.productCount > 0}"
+                        class="text-muted ms-2">
+                                                <small>(Remove products first)</small>
+                                            </span>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div th:if="${#lists.isEmpty(categories)}" class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No categories found. Click "Add New Category" to create your first category.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form th:action="@{/admin/categories/add}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="categoryName" class="form-label">Category Name</label>
+            <input type="text"
+                   class="form-control"
+                   id="categoryName"
+                   name="name"
+                   required
+                   placeholder="Enter category name">
+            <div class="form-text">Choose a unique name for the category</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-plus-circle me-2"></i>Add Category
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editCategoryForm" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editCategoryName" class="form-label">Category Name</label>
+            <input type="text"
+                   class="form-control"
+                   id="editCategoryName"
+                   name="name"
+                   required>
+            <div class="form-text">Update the category name</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle me-2"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+  // Edit Category Modal
+  var editCategoryModal = document.getElementById('editCategoryModal');
+  editCategoryModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var categoryId = button.getAttribute('data-id');
+    var categoryName = button.getAttribute('data-name');
+
+    var form = document.getElementById('editCategoryForm');
+    form.action = '/admin/categories/edit/' + categoryId;
+
+    var input = document.getElementById('editCategoryName');
+    input.value = categoryName;
+  });
+</script>
+</body>
+</html>
