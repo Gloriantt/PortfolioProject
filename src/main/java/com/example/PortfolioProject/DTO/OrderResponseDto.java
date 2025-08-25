@@ -3,6 +3,7 @@ package com.example.PortfolioProject.DTO;
 
 
 import com.example.PortfolioProject.Models.Order;
+import com.example.PortfolioProject.Models.OrderStatus;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ public class OrderResponseDto {
     private List<OrderItemDto> items;
     private BigDecimal totalAmount;
     private LocalDateTime orderDate;
-    private Order.OrderStatus status;
+    private OrderStatus status;
     private String shippingAddress;
     private String paymentMethod;
 
@@ -74,7 +75,7 @@ public class OrderResponseDto {
         dto.setId(order.getId());
         dto.setUsername(order.getUser().getUsername());
         dto.setTotalAmount(order.getTotalAmount());
-        dto.setOrderDate(order.getOrderDate());
+        dto.setOrderDate(order.getCreatedAt());
         dto.setStatus(order.getStatus());
         dto.setShippingAddress(order.getShippingAddress());
         dto.setPaymentMethod(order.getPaymentMethod());
@@ -132,11 +133,11 @@ public class OrderResponseDto {
         this.orderDate = orderDate;
     }
 
-    public Order.OrderStatus getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Order.OrderStatus status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 

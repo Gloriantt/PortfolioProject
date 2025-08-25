@@ -23,10 +23,7 @@ public class PageController {
         return "admin/admin";
     }
 
-    @GetMapping("/cart")
-    public String cartPage() {
-        return "cart";
-    }
+
 
 
 }

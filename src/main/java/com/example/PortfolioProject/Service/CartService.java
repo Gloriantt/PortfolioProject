@@ -1,16 +1,15 @@
 package com.example.PortfolioProject.Service;
 
-
-
-import com.example.PortfolioProject.Models.Cart;
-import com.example.PortfolioProject.Models.CartItem;
-import com.example.PortfolioProject.Models.Product;
+import com.example.PortfolioProject.Models.*;
 import com.example.PortfolioProject.Repository.CartRepository;
-import com.example.PortfolioProject.Repository.ProductRepository;
-import com.example.PortfolioProject.Repository.UserRepository;
+import com.example.PortfolioProject.Repository.CartItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -20,59 +19,126 @@ public class CartService {
     private CartRepository cartRepository;
 
     @Autowired
-    private ProductRepository productRepository;
+    private CartItemRepository cartItemRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private ProductService productService;
 
-    public Cart getCartByUserId(Long userId) {
-        return cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+    /**
+     * Получить корзину по ID
+     * @param cartId ID корзины
+     * @return корзина или null
+     */
+    public Cart getCartById(Long cartId) {
+        return cartRepository.findById(cartId).orElse(null);
     }
 
-    public Cart addToCart(Long userId, Long productId, int quantity) {
-        Cart cart = getCartByUserId(userId);
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+    /**
+     * Получить активную корзину по ID
+     * @param cartId ID корзины
+     * @return активная корзина или null
+     */
+    public Cart getActiveCartById(Long cartId) {
+        Optional<Cart> cart = cartRepository.findById(cartId);
+        if (cart.isPresent() && cart.get().getStatus() == CartStatus.ACTIVE) {
+            return cart.get();
+        }
+        return null;
+    }
 
-        if (product.getQuantity() < quantity) {
-            throw new RuntimeException("Not enough product in stock");
+    // Остальные методы остаются без изменений
+    public Cart getCartBySessionId(String sessionId) {
+        return cartRepository.findBySessionIdAndStatus(sessionId, CartStatus.ACTIVE)
+                .orElseGet(() -> createNewCart(sessionId));
+    }
+
+    public Cart getCartByUser(User user) {
+        return cartRepository.findByUserAndStatus(user, CartStatus.ACTIVE)
+                .orElseGet(() -> createNewCart(user));
+    }
+
+    private Cart createNewCart(String sessionId) {
+        Cart cart = new Cart();
+        cart.setSessionId(sessionId);
+        cart.setStatus(CartStatus.ACTIVE);
+        return cartRepository.save(cart);
+    }
+
+    private Cart createNewCart(User user) {
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart.setStatus(CartStatus.ACTIVE);
+        return cartRepository.save(cart);
+    }
+
+    public Cart addToCart(String sessionId, Long productId, int quantity) {
+        Cart cart = getCartBySessionId(sessionId);
+        Product product = productService.getProductById(productId);
+
+        if (product != null) {
+            cart.addItem(product, quantity);
+            cart = cartRepository.save(cart);
         }
 
-        cart.addItem(product, quantity);
-        return cartRepository.save(cart);
+        return cart;
     }
 
-    public Cart removeFromCart(Long userId, Long productId) {
-        Cart cart = getCartByUserId(userId);
-        cart.removeItem(productId);
-        return cartRepository.save(cart);
-    }
-
-    public Cart updateCartItemQuantity(Long userId, Long productId, int newQuantity) {
-        Cart cart = getCartByUserId(userId);
+    public Cart updateCartItem(String sessionId, Long productId, int quantity) {
+        Cart cart = getCartBySessionId(sessionId);
 
         CartItem item = cart.getItems().stream()
                 .filter(cartItem -> cartItem.getProduct().getId().equals(productId))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Item not found in cart"));
+                .orElse(null);
 
-        if (newQuantity <= 0) {
-            cart.removeItem(productId);
-        } else {
-            Product product = item.getProduct();
-            if (product.getQuantity() < newQuantity) {
-                throw new RuntimeException("Not enough product in stock");
+        if (item != null) {
+            if (quantity <= 0) {
+                cart.removeItem(productId);
+            } else {
+                item.setQuantity(quantity);
             }
-            item.setQuantity(newQuantity);
+            cart.setUpdatedAt(LocalDateTime.now());
+            cart = cartRepository.save(cart);
         }
 
+        return cart;
+    }
+
+    public Cart removeFromCart(String sessionId, Long productId) {
+        Cart cart = getCartBySessionId(sessionId);
+        cart.removeItem(productId);
         return cartRepository.save(cart);
     }
 
-    public void clearCart(Long userId) {
-        Cart cart = getCartByUserId(userId);
-        cart.getItems().clear();
+    public void clearCart(String sessionId) {
+        Cart cart = getCartBySessionId(sessionId);
+        cart.clear();
         cartRepository.save(cart);
+    }
+
+    public int getCartItemCount(String sessionId) {
+        Cart cart = getCartBySessionId(sessionId);
+        return cart.getTotalItems();
+    }
+
+    public BigDecimal getCartTotal(String sessionId) {
+        Cart cart = getCartBySessionId(sessionId);
+        return cart.getTotalPrice();
+    }
+
+    public void mergeGuestCartWithUserCart(String sessionId, User user) {
+        Optional<Cart> guestCart = cartRepository.findBySessionIdAndStatus(sessionId, CartStatus.ACTIVE);
+
+        if (guestCart.isPresent() && !guestCart.get().getItems().isEmpty()) {
+            Cart userCart = getCartByUser(user);
+
+            for (CartItem guestItem : guestCart.get().getItems()) {
+                userCart.addItem(guestItem.getProduct(), guestItem.getQuantity());
+            }
+
+            cartRepository.save(userCart);
+            guestCart.get().setStatus(CartStatus.ABANDONED);
+            cartRepository.save(guestCart.get());
+        }
     }
 }
