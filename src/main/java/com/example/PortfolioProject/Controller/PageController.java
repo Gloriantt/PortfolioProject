@@ -18,11 +18,6 @@ public class PageController {
         return "index";
     }
 
-    @GetMapping("/admin")
-    public String adminPage() {
-        return "admin/admin";
-    }
-
 
 
 
