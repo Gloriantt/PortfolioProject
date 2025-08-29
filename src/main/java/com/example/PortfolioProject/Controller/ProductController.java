@@ -4,6 +4,7 @@ import com.example.PortfolioProject.Models.Product;
 import com.example.PortfolioProject.Service.ProductService;
 import com.example.PortfolioProject.Service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ public class ProductController {
     }
 
     @GetMapping("/add")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public String showAddForm(Model model) {
         model.addAttribute("product", new Product());
         model.addAttribute("categories", categoryService.getAllCategories());
@@ -32,12 +34,14 @@ public class ProductController {
     }
 
     @PostMapping("/add")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public String addProduct(@ModelAttribute Product product) {
         productService.saveProduct(product);
         return "redirect:/admin/products";
     }
 
     @GetMapping("/edit/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public String showEditForm(@PathVariable Long id, Model model) {
         model.addAttribute("product", productService.getProductById(id));
         model.addAttribute("categories", categoryService.getAllCategories());
@@ -45,6 +49,7 @@ public class ProductController {
     }
 
     @PostMapping("/edit/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public String updateProduct(@PathVariable Long id, @ModelAttribute Product product) {
         product.setId(id);
         productService.updateProduct(product);
@@ -52,6 +57,7 @@ public class ProductController {
     }
 
     @GetMapping("/delete/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public String deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return "redirect:/admin/products";
